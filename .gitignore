@@ -1,0 +1,31 @@
+# --- Environment / secrets ---
+.env
+.env.*
+*.env
+
+# --- Data files (raw imports) ---
+data/raw/
+*.geojson
+*.gpkg
+*.shp
+*.dbf
+*.prj
+*.shx
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Logs ---
+*.log
