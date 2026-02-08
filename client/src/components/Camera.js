@@ -4,6 +4,8 @@ import "./Camera.css"
 const FullscreenCamera = () => {
   const videoRef = useRef(null);
   const [isStarted, setIsStarted] = useState(false);
+  const [hasGpsFix, setHasGpsFix] = useState(false);
+  const [hasOrientationFix, setHasOrientationFix] = useState(false);
 
   const [coords, setCoords] = useState({
     latitude: null,
@@ -187,6 +189,8 @@ const FullscreenCamera = () => {
 
   useEffect(() => {
     if (!isStarted) return;
+    if (!hasOrientationFix) return;
+    if (!hasGpsFix) return;
 
     const intervalId = setInterval(() => {
       const { alpha, beta, gamma } = orientation;
@@ -234,7 +238,7 @@ const FullscreenCamera = () => {
   }, CHECK_EVERY_MS);
 
     return () => clearInterval(intervalId);
-  }, [isStarted, orientation]);
+  }, [isStarted, orientation, hasGpsFix, hasOrientationFix]);
 
 
 
