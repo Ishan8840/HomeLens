@@ -6,7 +6,6 @@ const FullscreenCamera = () => {
   const [isStarted, setIsStarted] = useState(false);
   const [hasGpsFix, setHasGpsFix] = useState(false);
   const [hasOrientationFix, setHasOrientationFix] = useState(false);
-  const [apiData, setApiData] = useState(null);
 
   const [coords, setCoords] = useState({
     latitude: null,
