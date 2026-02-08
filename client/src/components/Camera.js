@@ -161,7 +161,7 @@ const FullscreenCamera = () => {
   };
 
   //********************************************************************** */
-  const [still, setStill] = useState(false);
+  const [still, setStill] = useState(true);
 
   const CHECK_EVERY_MS = 150;
 
