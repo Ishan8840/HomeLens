@@ -439,14 +439,14 @@ useEffect(() => {
                     <h3 className="sectionTitle">🛒 Nearby Food</h3>
                     <ul className="list">
                       {(predicted.nearby_food || []).map((place, i) => (
-                        <li key={i} className="listItem">{place.name} • {place.distance}</li>
+                        <li key={i} className="listItem">{place.name}</li>
                       ))}
                     </ul>
 
                     <h3 className="sectionTitle">🏫 Nearby Schools</h3>
                     <ul className="list">
                       {(predicted.nearby_schools || []).map((school, i) => (
-                        <li key={i} className="listItem">{school.name} • {school.distance}</li>
+                        <li key={i} className="listItem">{school.name}</li>
                       ))}
                     </ul>
 
