@@ -255,7 +255,7 @@ const FullscreenCamera = () => {
         <div className="centerDot" />
 
         {/* 🏠 House Icon - Bottom Right */}
-        {isFacingNorth && (
+        {still && (
           <button
             onClick={() => setShowInfo(true)}
             className="houseBtn"
@@ -263,7 +263,7 @@ const FullscreenCamera = () => {
             🏠
           </button>
         )}
-        <div className={still ? "showing" : "hidden"}>STILL!</div> {/*TESSTTTTTT!!!!!!!!!!!!!!!!!!!!!!!*/}
+        {/* <div className={still ? "showing" : "hidden"}>STILL!</div> TESSTTTTTT!!!!!!!!!!!!!!!!!!!!!!! */}
 
         {/* 🪧 Property Info Panel - Slide Up */}
         {showInfo && (
