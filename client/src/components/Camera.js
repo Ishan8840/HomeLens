@@ -239,7 +239,7 @@ const FullscreenCamera = () => {
     return () => clearInterval(intervalId);
 
     // 5️⃣ REMOVE 'orientation' from dependencies so the interval stays alive
-  }, [isStarted, hasGpsFix, hasOrientationFix]);
+  }, [isStarted, hasGpsFix, hasOrientationFix, coords.latitude, coords.longitude]);
 
 
 
