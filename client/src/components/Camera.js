@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import "./Camera.css"
 
 const FullscreenCamera = () => {
@@ -173,7 +173,6 @@ const FullscreenCamera = () => {
 
   //********************************************************************** */
   const [still, setStill] = useState(false);
-  const [stillMs, setStillMs] = useState(0);
 
   const CHECK_EVERY_MS = 150;
 
@@ -205,7 +204,7 @@ const FullscreenCamera = () => {
     return Math.min(diff, 360 - diff);
   };
 
-  const onStillFor2Seconds = () => {
+  const onStillFor2Seconds = useCallback(() => {
     console.log("✅ Still for 2 seconds. Trigger API call here.", {
       latitude: coords.latitude,
       longitude: coords.longitude,
@@ -215,7 +214,7 @@ const FullscreenCamera = () => {
       gamma: orientation.gamma,
       time: new Date().toISOString(),
     });
-  };
+  }, [coords.latitude, coords.longitude, heading, orientation.alpha, orientation.beta, orientation.gamma]);
 
   useEffect(() => {
     if (!isStarted) return;
@@ -231,7 +230,6 @@ const FullscreenCamera = () => {
       if (latitude == null || longitude == null || alpha == null || beta == null || gamma == null) {
         stillSinceRef.current = null;
         setStill(false);
-        setStillMs(0);
         return;
       }
 
@@ -249,7 +247,6 @@ const FullscreenCamera = () => {
         lastValuesRef.current = { latitude: lat, longitude: lng, alpha: a, beta: b, gamma: g };
         stillSinceRef.current = null;
         setStill(false);
-        setStillMs(0);
         return;
       }
 
@@ -272,7 +269,6 @@ const FullscreenCamera = () => {
         // reset stillness timer
         stillSinceRef.current = null;
         setStill(false);
-        setStillMs(0);
         return;
       }
 
@@ -280,12 +276,10 @@ const FullscreenCamera = () => {
       if (stillSinceRef.current === null) {
         stillSinceRef.current = now;
         setStill(false);
-        setStillMs(0);
         return;
       }
 
       const duration = now - stillSinceRef.current;
-      setStillMs(duration);
 
       const isStillFor2s = duration >= STILL_REQUIRED_MS;
       setStill(isStillFor2s);
@@ -299,7 +293,7 @@ const FullscreenCamera = () => {
     }, CHECK_EVERY_MS);
 
     return () => clearInterval(intervalId);
-  }, [isStarted, hasGpsFix, orientationEnabled, hasOrientationFix, coords, orientation, heading]);
+  }, [isStarted, hasGpsFix, orientationEnabled, hasOrientationFix, coords, orientation, heading, onStillFor2Seconds]);
 
 
 
