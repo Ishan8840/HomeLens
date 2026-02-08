@@ -360,7 +360,10 @@ useEffect(() => {
           />
 
           {/* 🔴 Red Dot Center */}
-          <div className="centerDot" />
+          <div className="centerDot">
+            <span />
+          </div>
+
 
           {/* 🏠 House Icon - Bottom Right */}
           {still && (

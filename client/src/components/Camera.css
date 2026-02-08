@@ -40,12 +40,63 @@
   position: fixed;
   top: 50%;
   left: 50%;
+  width: 160px;   /* box size */
+  height: 160px;
   transform: translate(-50%, -50%);
-  width: 14px;
-  height: 14px;
-  background-color: red;
-  border-radius: 50%;
-  z-index: 2;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* shared corner style */
+.centerDot::before,
+.centerDot::after {
+  content: "";
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 3px solid white;
+}
+
+/* top-left */
+.centerDot::before {
+  top: 0;
+  left: 0;
+  border-right: none;
+  border-bottom: none;
+}
+
+/* bottom-right */
+.centerDot::after {
+  bottom: 0;
+  right: 0;
+  border-left: none;
+  border-top: none;
+}
+
+/* extra elements for other 2 corners */
+.centerDot span::before,
+.centerDot span::after {
+  content: "";
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 3px solid white;
+}
+
+/* top-right */
+.centerDot span::before {
+  top: 0;
+  right: 0;
+  border-left: none;
+  border-bottom: none;
+}
+
+/* bottom-left */
+.centerDot span::after {
+  bottom: 0;
+  left: 0;
+  border-right: none;
+  border-top: none;
 }
 
 /* House button bottom-right */
