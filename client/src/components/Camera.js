@@ -408,13 +408,13 @@ useEffect(() => {
                     <h3 className="title">{predicted.building_name}</h3>
                     <p className="subtle">{predicted.location}</p>
 
-                    {/* <div className="priceCard">
-                      <div className="priceType">{predicted.predicted_price_or_rent?.type}</div>
+                    <div className="priceCard">
+                      <div className="priceType">{predicted.predicted_price_or_rent.type}</div>
                       <div className="priceAmount">
-                        {predicted.predicted_price_or_rent?.currency} ${predicted.predicted_price_or_rent?.amount}
+                        {predicted.predicted_price_or_rent?.currency} ${predicted.predicted_price_or_rent.amount}
                       </div>
                       <div className="confidence">
-                        Confidence: {predicted.predicted_price_or_rent?.confidence}
+                        Confidence: {predicted.predicted_price_or_rent.confidence}
                       </div>
                     </div>
 
@@ -436,21 +436,21 @@ useEffect(() => {
 
                     <p className="italicNote">{predicted.future_price_projection?.notes}</p>
 
-                    <h3 className="sectionTitle">🛒 Nearby Grocery</h3>
+                    <h3 className="sectionTitle">🛒 Nearby Food</h3>
                     <ul className="list">
-                      {(predicted.nearby_food_grocery || []).map((store, i) => (
-                        <li key={i} className="listItem">{store}</li>
+                      {(predicted.nearby_food || []).map((place, i) => (
+                        <li key={i} className="listItem">{place.name} • {place.distance}</li>
                       ))}
                     </ul>
 
                     <h3 className="sectionTitle">🏫 Nearby Schools</h3>
                     <ul className="list">
                       {(predicted.nearby_schools || []).map((school, i) => (
-                        <li key={i} className="listItem">{school}</li>
+                        <li key={i} className="listItem">{school.name} • {place.distance}</li>
                       ))}
                     </ul>
 
-                    <div className="footerHint">Swipe down to return to camera</div> */}
+                    <div className="footerHint">Swipe down to return to camera</div>
                   </>
                 )}
               </div>
