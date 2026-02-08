@@ -26,8 +26,8 @@ const FullscreenCamera = () => {
   const touchStartY = useRef(0);
 
   const [predicted, setPredicted] = useState(null);
-  const [isFetching, setIsFetching] = useState(false);
-  const [fetchError, setFetchError] = useState(null);
+  // const [isFetching, setIsFetching] = useState(false);
+  // const [fetchError, setFetchError] = useState(null);
 
   // prevents calling API every 150ms while still==true
   const didFetchForCurrentStillRef = useRef(false);
@@ -187,6 +187,7 @@ useEffect(() => {
         beta: event.beta ?? null,
         gamma: event.gamma ?? null,
       });
+      console.log(showInfo);
 
       // ✅ once we get our first non-null reading, we know the sensor is live
       if (
@@ -221,19 +222,19 @@ useEffect(() => {
   // const isFacingNorth = heading !== null && (heading <= 10 || heading >= 350);
 
   // Handle swipe down to close popup
-  const handleTouchStart = (e) => {
-    touchStartY.current = e.touches[0].clientY;
-  };
+  // const handleTouchStart = (e) => {
+  //   touchStartY.current = e.touches[0].clientY;
+  // };
 
-  const handleTouchEnd = (e) => {
-    const touchEndY = e.changedTouches[0].clientY;
-    const swipeDistance = touchEndY - touchStartY.current;
+  // const handleTouchEnd = (e) => {
+  //   const touchEndY = e.changedTouches[0].clientY;
+  //   const swipeDistance = touchEndY - touchStartY.current;
 
-    // If swiped down more than 100px, close popup
-    if (swipeDistance > 100) {
-      setShowInfo(false);
-    }
-  };
+  //   // If swiped down more than 100px, close popup
+  //   if (swipeDistance > 100) {
+  //     setShowInfo(false);
+  //   }
+  // };
 
   //********************************************************************** */
   const [still, setStill] = useState(false);
