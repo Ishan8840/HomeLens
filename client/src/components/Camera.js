@@ -46,7 +46,7 @@ const FullscreenCamera = () => {
         radius_m: "100",
       });
 
-      const res = await fetch(`${API_BASE}/buildings/nearby?${params.toString()}`);
+      const res = await fetch(`https://macathon.onrender.com/buildings/nearby?${params.toString()}`);
 
       if (!res.ok) throw new Error("API error");
 
