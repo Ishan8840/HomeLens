@@ -25,18 +25,18 @@ def generate_summary(location: dict):
         {{
         "building_name": "",
         "location": "",
-        "distance": {
+        "distance": {{
             "distance_km": "",
             "estimated_time_minutes": "",
             "confidence": "low|medium|high",
             "notes": ""
-        },
-        "nearby_bus_stop": {
+        }},
+        "nearby_bus_stop": {{
             "name": "",
             "distance_m": "",
             "confidence": "low|medium|high",
             "notes": ""
-        },
+        }},
         "predicted_price_or_rent": {{
             "type": "rent_or_sale",
             "amount": "",
