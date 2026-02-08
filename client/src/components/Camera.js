@@ -446,7 +446,7 @@ useEffect(() => {
                     <h3 className="sectionTitle">🏫 Nearby Schools</h3>
                     <ul className="list">
                       {(predicted.nearby_schools || []).map((school, i) => (
-                        <li key={i} className="listItem">{school.name} • {place.distance}</li>
+                        <li key={i} className="listItem">{school.name} • {school.distance}</li>
                       ))}
                     </ul>
 
