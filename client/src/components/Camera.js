@@ -1,14 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import "./Camera.css";
+import "./Camera.css"
 
 const FullscreenCamera = () => {
   const videoRef = useRef(null);
   const [isStarted, setIsStarted] = useState(false);
   const [hasGpsFix, setHasGpsFix] = useState(false);
   const [hasOrientationFix, setHasOrientationFix] = useState(false);
-
-  // Throttling Ref to prevent render storms
-  const lastUIUpdate = useRef(0);
 
   const [coords, setCoords] = useState({
     latitude: null,
@@ -19,16 +16,7 @@ const FullscreenCamera = () => {
 
   const [heading, setHeading] = useState(null);
   const [orientationEnabled, setOrientationEnabled] = useState(false);
-  
-  // We keep state for the UI (throttled)
   const [orientation, setOrientation] = useState({
-    alpha: null,
-    beta: null,
-    gamma: null,
-  });
-
-  // We keep a Ref for the logic (instant)
-  const currentOrientationRef = useRef({
     alpha: null,
     beta: null,
     gamma: null,
@@ -45,7 +33,6 @@ const FullscreenCamera = () => {
   const didFetchForCurrentStillRef = useRef(false);
 
   const fetchPrediction = useCallback(async () => {
-    // Use refs for coords if possible, but state is okay here since it updates slowly
     if (coords.latitude == null || coords.longitude == null || heading == null) return;
 
     setIsFetching(true);
@@ -80,17 +67,11 @@ const FullscreenCamera = () => {
     const startCamera = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { 
-            facingMode: "environment",
-            width: { ideal: 1920 }, // Optional: Request HD if available
-            height: { ideal: 1080 } 
-          },
+          video: { facingMode: "environment" },
           audio: false,
         });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          // Important for iOS to not go fullscreen/black
-          videoRef.current.setAttribute("playsinline", "true"); 
           await videoRef.current.play();
         }
       } catch (error) {
@@ -98,14 +79,6 @@ const FullscreenCamera = () => {
       }
     };
     startCamera();
-
-    // Cleanup stream on unmount
-    return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const tracks = videoRef.current.srcObject.getTracks();
-        tracks.forEach(track => track.stop());
-      }
-    };
   }, [isStarted]);
 
   // 📍 Geolocation updates
@@ -114,10 +87,11 @@ const FullscreenCamera = () => {
 
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        setHasGpsFix(true);
+        setHasGpsFix(true); // ✅ we now have GPS data at least once
+
         setCoords({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
+          latitude: position.coords.latitude,   // ✅ keep as number
+          longitude: position.coords.longitude, // ✅ keep as number
           accuracy: position.coords.accuracy,
           timestamp: position.timestamp,
         });
@@ -125,52 +99,42 @@ const FullscreenCamera = () => {
       (err) => {
         console.error("Geolocation error:", err);
         setHasGpsFix(false);
-      },
-      { enableHighAccuracy: true } // Request best GPS possible
+      }
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
   }, [isStarted]);
 
-  // 🧭 Device orientation (OPTIMIZED)
+  // 🧭 Device orientation
   const enableOrientation = async () => {
     const handleOrientation = (event) => {
-      // 1. INSTANT UPDATE: Update the Ref immediately for the 'Still' logic
-      currentOrientationRef.current = {
-        alpha: event.alpha,
-        beta: event.beta,
-        gamma: event.gamma
-      };
+      let compassHeading = null;
 
-      // 2. THROTTLED UPDATE: Only update React State every 150ms
-      // This prevents the "Render Storm" that causes the black screen
-      const now = Date.now();
-      if (now - lastUIUpdate.current > 150) {
-        lastUIUpdate.current = now;
+      if (typeof event.webkitCompassHeading === "number") {
+        compassHeading = event.webkitCompassHeading;
+      } else if (typeof event.alpha === "number") {
+        compassHeading = event.alpha;
+      }
 
-        let compassHeading = null;
-        if (typeof event.webkitCompassHeading === "number") {
-          compassHeading = event.webkitCompassHeading;
-        } else if (typeof event.alpha === "number") {
-          compassHeading = event.alpha;
-        }
+      if (compassHeading !== null) {
+        compassHeading = compassHeading % 360;
+        if (compassHeading < 0) compassHeading += 360;
+        setHeading(Math.round(compassHeading));
+      }
 
-        if (compassHeading !== null) {
-          compassHeading = compassHeading % 360;
-          if (compassHeading < 0) compassHeading += 360;
-          setHeading(Math.round(compassHeading));
-        }
+      setOrientation({
+        alpha: event.alpha ?? null, // ✅ keep as number
+        beta: event.beta ?? null,
+        gamma: event.gamma ?? null,
+      });
 
-        setOrientation({
-          alpha: event.alpha ?? null,
-          beta: event.beta ?? null,
-          gamma: event.gamma ?? null,
-        });
-
-        // Mark as fixed if we have data
-        if (event.alpha != null && event.beta != null && event.gamma != null) {
-          setHasOrientationFix(true);
-        }
+      // ✅ once we get our first non-null reading, we know the sensor is live
+      if (
+        event.alpha != null &&
+        event.beta != null &&
+        event.gamma != null
+      ) {
+        setHasOrientationFix(true);
       }
     };
 
@@ -193,6 +157,9 @@ const FullscreenCamera = () => {
     }
   };
 
+  // 🏠 Show icon if heading is ~north (±10°)
+  // const isFacingNorth = heading !== null && (heading <= 10 || heading >= 350);
+
   // Handle swipe down to close popup
   const handleTouchStart = (e) => {
     touchStartY.current = e.touches[0].clientY;
@@ -202,6 +169,7 @@ const FullscreenCamera = () => {
     const touchEndY = e.changedTouches[0].clientY;
     const swipeDistance = touchEndY - touchStartY.current;
 
+    // If swiped down more than 100px, close popup
     if (swipeDistance > 100) {
       setShowInfo(false);
     }
@@ -212,6 +180,15 @@ const FullscreenCamera = () => {
 
   const lastOrientationRef = useRef(null);   
   const stillSinceRef = useRef(null);        
+
+  // 1️⃣ NEW: Create a Ref to hold the current orientation
+  // This allows the interval to read the latest value without restarting
+  const currentOrientationRef = useRef(orientation);
+
+  // 2️⃣ NEW: Keep the Ref in sync with your state
+  useEffect(() => {
+    currentOrientationRef.current = orientation;
+  }, [orientation]);
 
   const CHECK_EVERY_MS = 150;
   const STILL_REQUIRED_MS = 2000;
@@ -225,10 +202,12 @@ const FullscreenCamera = () => {
   // 3️⃣ UPDATED: The Stillness Logic
   useEffect(() => {
     if (!isStarted) return;
-    // We don't need hasOrientationFix in deps because the interval checks the ref
-    
+    if (!hasOrientationFix) return;
+    if (!hasGpsFix) return;
+
     const intervalId = setInterval(() => {
-      // Read directly from the Ref which is updated instantly by the event listener
+      // 4️⃣ IMPORTANT: Read from the REF, not the state variable!
+      // This ensures we get fresh data even though 'orientation' isn't in the dependency array
       const current = currentOrientationRef.current;
       const { alpha, beta, gamma } = current;
 
@@ -272,7 +251,9 @@ const FullscreenCamera = () => {
     }, CHECK_EVERY_MS);
 
     return () => clearInterval(intervalId);
-  }, [isStarted]); // Minimized dependencies
+    
+    // 5️⃣ REMOVE 'orientation' from dependencies so the interval stays alive
+  }, [isStarted, hasGpsFix, hasOrientationFix]);
 
   useEffect(() => {
     if (!still) {
@@ -281,13 +262,14 @@ const FullscreenCamera = () => {
     }
 
     if (didFetchForCurrentStillRef.current) return;
-    // Ensure we have GPS before fetching
-    if (!hasGpsFix) return;
+    if (!hasGpsFix || !hasOrientationFix) return;
 
     didFetchForCurrentStillRef.current = true;
     fetchPrediction();
 
-  }, [still, hasGpsFix, fetchPrediction]);
+  }, [still, hasGpsFix, hasOrientationFix, fetchPrediction]);
+
+
 
 
   return (
@@ -306,7 +288,7 @@ const FullscreenCamera = () => {
           <video
             ref={videoRef}
             autoPlay
-            playsInline // Vital for mobile browsers!
+            playsInline
             muted
             className="cameraVideo"
           />
@@ -319,6 +301,8 @@ const FullscreenCamera = () => {
             <button
               onClick={() => {
                 setShowInfo(true);
+                // optional: if you want tap to force refresh
+                // fetchPrediction();
               }}
               className="houseBtn"
             >
@@ -326,10 +310,10 @@ const FullscreenCamera = () => {
             </button>
           )}
 
-          <div className={still ? "showing" : "hidden"}>STILL!</div>
+          <div className={still ? "showing" : "hidden"}>STILL!</div> {/*TESSTTTTTT!!!!!!!!!!!!!!!!!!!!!!! */}
 
           {/* 🪧 Property Info Panel - Slide Up */}
-          {showInfo && (
+                    {showInfo && (
             <div
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
@@ -407,17 +391,6 @@ const FullscreenCamera = () => {
               </div>
             </div>
           )}
-
-
-          {/* ℹ️ Info HUD - Throttled updates prevent lag */}
-          <div className="hud">
-            <div>📍 Lat: {coords.latitude ?? "---"}</div>
-            <div>📍 Lng: {coords.longitude ?? "---"}</div>
-            <div>🧭 Heading: {heading !== null ? `${heading}°` : "---"}</div>
-            <div>📐 Alpha: {orientation.alpha !== null ? Math.round(orientation.alpha) : "---"}°</div>
-            <div>📐 Beta: {orientation.beta !== null ? Math.round(orientation.beta) : "---"}°</div>
-            <div>📐 Gamma: {orientation.gamma !== null ? Math.round(orientation.gamma) : "---"}°</div>
-          </div>
 
           {/* 🛡 Motion Permission */}
           {!orientationEnabled && (
