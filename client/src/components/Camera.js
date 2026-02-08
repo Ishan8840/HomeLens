@@ -61,35 +61,40 @@ const FullscreenCamera = () => {
   }, [coords.latitude, coords.longitude, heading]);
 
   // 📸 Start rear camera
+  const streamRef = useRef(null);
+
   useEffect(() => {
     if (!isStarted) return;
 
-    const videoElement = videoRef.current;
+    let cancelled = false;
 
-    const startCamera = async () => {
+    (async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "environment" },
           audio: false,
         });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
+        if (cancelled) {
+          stream.getTracks().forEach(t => t.stop());
+          return;
         }
-      } catch (error) {
-        console.error("Camera error:", error);
+        streamRef.current = stream;
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      } catch (e) {
+        console.error("Camera error:", e);
       }
-    };
-    startCamera();
+    })();
 
     return () => {
-    if (videoElement?.srcObject) {
-      const stream = videoElement.srcObject;
-      const tracks = stream.getTracks();
-      tracks.forEach(track => track.stop());
-    }
-  };
+      cancelled = true;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
+    };
   }, [isStarted]);
+
 
   // 📍 Geolocation updates
   useEffect(() => {
