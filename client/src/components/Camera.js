@@ -143,7 +143,7 @@ const FullscreenCamera = () => {
   };
 
   // 🏠 Show icon if heading is ~north (±10°)
-  const isFacingNorth = heading !== null && (heading <= 10 || heading >= 350);
+  // const isFacingNorth = heading !== null && (heading <= 10 || heading >= 350);
 
   // Handle swipe down to close popup
   const handleTouchStart = (e) => {
