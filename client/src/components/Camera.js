@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import "./Camera.css"
 
 const FullscreenCamera = () => {
   const videoRef = useRef(null);
@@ -159,294 +160,194 @@ const FullscreenCamera = () => {
     }
   };
 
+  //********************************************************************** */
+  const [still, setStill] = useState(false);
+
+  const CHECK_EVERY_MS = 150;
+
+  // thresholds for "no movement"
+  const GPS_THRESHOLD = 0.00002; // ~2 meters in lat/lng
+  const ORIENTATION_THRESHOLD = 15; // degrees
+
+  // store previous values
+  const lastValuesRef = useRef({
+    latitude: null,
+    longitude: null,
+    alpha: null,
+    beta: null,
+    gamma: null,
+  });
+
+  useEffect(() => {
+    if (!isStarted) return;
+
+    const intervalId = setInterval(() => {
+      const { latitude, longitude } = coords;
+      const { alpha, beta, gamma } = orientation;
+
+      // wait until all values exist
+      if (
+        latitude === null ||
+        longitude === null ||
+        alpha === null ||
+        beta === null ||
+        gamma === null
+      ) {
+        return;
+      }
+
+      const last = lastValuesRef.current;
+
+      // first run setup
+      if (last.latitude === null) {
+        lastValuesRef.current = { latitude, longitude, alpha, beta, gamma };
+        return;
+      }
+
+      const gpsMoved =
+        Math.abs(latitude - last.latitude) > GPS_THRESHOLD ||
+        Math.abs(longitude - last.longitude) > GPS_THRESHOLD;
+
+      const orientationMoved =
+        Math.abs(alpha - last.alpha) > ORIENTATION_THRESHOLD ||
+        Math.abs(beta - last.beta) > ORIENTATION_THRESHOLD ||
+        Math.abs(gamma - last.gamma) > ORIENTATION_THRESHOLD;
+
+      if (gpsMoved || orientationMoved) {
+        console.log("📍 Device moved");
+        setStill(false);
+      } else {
+        console.log("🧊 Device still");
+        setStill(true);
+      }
+
+      // update last values
+      lastValuesRef.current = { latitude, longitude, alpha, beta, gamma };
+    }, CHECK_EVERY_MS);
+
+    return () => clearInterval(intervalId);
+  }, [isStarted, coords, orientation]);
+
+
+
   return (
-    <div style={{ position: "fixed", inset: 0, overflow: "hidden", backgroundColor: "black" }}>
-      {/* Start AR Button */}
-      {!isStarted && (
-        <button
-          onClick={() => setIsStarted(true)}
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            padding: "20px 40px",
-            fontSize: "20px",
-            fontWeight: "bold",
-            background: "white",
-            border: "none",
-            borderRadius: "12px",
-            cursor: "pointer",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
-            zIndex: 1000,
-          }}
-        >
-          Start AR
-        </button>
-      )}
+  <div className="arRoot">
+    {/* Start AR Button */}
+    {!isStarted && (
+      <button onClick={() => setIsStarted(true)} className="startARBtn">
+        Start AR
+      </button>
+    )}
 
-      {/* All camera and UI elements - only show after start */}
-      {isStarted && (
-        <>
-          {/* 📷 Fullscreen Camera */}
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              width: "100vw",
-              height: "100vh",
-              objectFit: "cover",
-              backgroundColor: "black",
-              zIndex: 0,
-            }}
-          />
+    {/* All camera and UI elements - only show after start */}
+    {isStarted && (
+      <>
+        {/* 📷 Fullscreen Camera */}
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="cameraVideo"
+        />
 
-          {/* 🔴 Red Dot Center */}
-          <div
-            style={{
-              position: "fixed",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: "14px",
-              height: "14px",
-              backgroundColor: "red",
-              borderRadius: "50%",
-              zIndex: 2,
-            }}
-          />
+        {/* 🔴 Red Dot Center */}
+        <div className="centerDot" />
 
-          {/* 🏠 House Icon - Bottom Right */}
-          {isFacingNorth && (
-            <button
-              onClick={() => setShowInfo(true)}
-              style={{
-                position: "fixed",
-                bottom: "30px",
-                right: "30px",
-                width: "60px",
-                height: "60px",
-                borderRadius: "50%",
-                background: "rgba(255, 255, 255, 0.9)",
-                border: "none",
-                fontSize: "28px",
-                cursor: "pointer",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 100,
-              }}
-            >
-              🏠
-            </button>
-          )}
-
-          {/* 🪧 Property Info Panel - Slide Up */}
-          {showInfo && (
-            <div
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
-              style={{
-                position: "fixed",
-                bottom: 0,
-                left: 0,
-                width: "100%",
-                height: "75%",
-                backgroundColor: "white",
-                zIndex: 300,
-                overflowY: "auto",
-                display: "flex",
-                flexDirection: "column",
-                borderTopLeftRadius: "20px",
-                borderTopRightRadius: "20px",
-                animation: "slideUp 0.3s ease-out",
-              }}
-            >
-              {/* Swipe indicator */}
-              <div
-                style={{
-                  width: "100%",
-                  padding: "15px 0",
-                  display: "flex",
-                  justifyContent: "center",
-                  background: "#f5f5f5",
-                  borderTopLeftRadius: "20px",
-                  borderTopRightRadius: "20px",
-                }}
-              >
-                <div
-                  style={{
-                    width: "40px",
-                    height: "5px",
-                    background: "#ccc",
-                    borderRadius: "3px",
-                  }}
-                />
-              </div>
-
-              <div
-                style={{
-                  flex: 1,
-                  padding: "20px",
-                  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                  color: "#000",
-                }}
-              >
-                <div style={{ fontSize: "32px", marginBottom: "10px" }}>🏠</div>
-                <h3 style={{ margin: "0 0 10px 0", fontSize: "24px", fontWeight: "bold" }}>
-                  {predicted.building_name}
-                </h3>
-                <p style={{ color: "#666", margin: "0 0 20px 0" }}>{predicted.location}</p>
-
-                <div
-                  style={{
-                    background: "#f5f5f5",
-                    padding: "15px",
-                    borderRadius: "12px",
-                    marginBottom: "20px",
-                  }}
-                >
-                  <div style={{ fontSize: "14px", color: "#666", marginBottom: "5px" }}>
-                    {predicted.predicted_price_or_rent.type}
-                  </div>
-                  <div style={{ fontSize: "28px", fontWeight: "bold", marginBottom: "5px" }}>
-                    {predicted.predicted_price_or_rent.currency} ${predicted.predicted_price_or_rent.amount}
-                  </div>
-                  <div style={{ fontSize: "12px", color: "#999" }}>
-                    Confidence: {predicted.predicted_price_or_rent.confidence}
-                  </div>
-                </div>
-
-                <p style={{ fontSize: "14px", color: "#666", marginBottom: "20px" }}>
-                  {predicted.predicted_price_or_rent.notes}
-                </p>
-
-                <h3 style={{ fontSize: "18px", marginBottom: "10px" }}>📈 Price Projection</h3>
-                <div style={{ marginBottom: "20px" }}>
-                  <div style={{ marginBottom: "8px" }}>
-                    <strong>1 Year:</strong> ${predicted.future_price_projection["1_year"]}
-                  </div>
-                  <div style={{ marginBottom: "8px" }}>
-                    <strong>5 Years:</strong> ${predicted.future_price_projection["5_year"]}
-                  </div>
-                  <div style={{ marginBottom: "8px" }}>
-                    <strong>Trend:</strong> {predicted.future_price_projection.trend} (
-                    {predicted.future_price_projection.confidence})
-                  </div>
-                </div>
-                <p style={{ fontSize: "14px", color: "#666", marginBottom: "20px", fontStyle: "italic" }}>
-                  {predicted.future_price_projection.notes}
-                </p>
-
-                <h3 style={{ fontSize: "18px", marginBottom: "10px" }}>🛒 Nearby Grocery</h3>
-                <ul style={{ paddingLeft: "20px", marginBottom: "20px" }}>
-                  {predicted.nearby_food_grocery.map((store, i) => (
-                    <li key={i} style={{ marginBottom: "5px" }}>
-                      {store}
-                    </li>
-                  ))}
-                </ul>
-
-                <h3 style={{ fontSize: "18px", marginBottom: "10px" }}>🏫 Nearby Schools</h3>
-                <ul style={{ paddingLeft: "20px", marginBottom: "20px" }}>
-                  {predicted.nearby_schools.map((school, i) => (
-                    <li key={i} style={{ marginBottom: "5px" }}>
-                      {school}
-                    </li>
-                  ))}
-                </ul>
-
-                <div
-                  style={{
-                    color: "#999",
-                    fontSize: "12px",
-                    textAlign: "center",
-                    marginTop: "30px",
-                    paddingTop: "20px",
-                    borderTop: "1px solid #eee",
-                  }}
-                >
-                  Swipe down to return to camera
-                </div>
-              </div>
-
-              {/* CSS Animation */}
-              <style>
-                {`
-                  @keyframes slideUp {
-                    from {
-                      transform: translateY(100%);
-                    }
-                    to {
-                      transform: translateY(0);
-                    }
-                  }
-                `}
-              </style>
-            </div>
-          )}
-
-          {/* ℹ️ Info HUD */}
-          <div
-            style={{
-              position: "fixed",
-              bottom: 40,
-              left: "50%",
-              transform: "translateX(-50%)",
-              backgroundColor: "rgba(0,0,0,0.6)",
-              color: "white",
-              padding: "12px 16px",
-              borderRadius: "10px",
-              fontSize: "14px",
-              fontFamily: "monospace",
-              zIndex: 3,
-              textAlign: "center",
-              lineHeight: "1.4em",
-            }}
+        {/* 🏠 House Icon - Bottom Right */}
+        {isFacingNorth && (
+          <button
+            onClick={() => setShowInfo(true)}
+            className="houseBtn"
           >
-            <div>📍 Lat: {coords.latitude ?? "---"}</div>
-            <div>📍 Lng: {coords.longitude ?? "---"}</div>
-            <div>🎯 Accuracy: ±{coords.accuracy ?? "---"} m</div>
-            <div>⏱ Updated: {coords.timestamp ?? "---"}</div>
-            <div>🧭 Heading: {heading !== null ? `${heading}°` : "---"}</div>
-            <div>📐 Alpha: {orientation.alpha ?? "---"}°</div>
-            <div>📐 Beta: {orientation.beta ?? "---"}°</div>
-            <div>📐 Gamma: {orientation.gamma ?? "---"}°</div>
-          </div>
+            🏠
+          </button>
+        )}
+        <div className={still ? "showing" : "hidden"}>STILL!</div> {/*TESSTTTTTT!!!!!!!!!!!!!!!!!!!!!!!*/}
 
-          {/* 🛡 Motion Permission */}
-          {!orientationEnabled && (
-            <button
-              onClick={enableOrientation}
-              style={{
-                position: "fixed",
-                top: 60,
-                left: "50%",
-                transform: "translateX(-50%)",
-                padding: "12px 20px",
-                backgroundColor: "#ff4444",
-                color: "white",
-                fontWeight: "bold",
-                borderRadius: "8px",
-                border: "none",
-                fontSize: "16px",
-                zIndex: 6,
-                cursor: "pointer",
-              }}
-            >
-              Enable Orientation
-            </button>
-          )}
-        </>
-      )}
-    </div>
-  );
+        {/* 🪧 Property Info Panel - Slide Up */}
+        {showInfo && (
+          <div
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            className="infoPanel"
+          >
+            {/* Swipe indicator */}
+            <div className="swipeHeader">
+              <div className="swipeBar" />
+            </div>
+
+            <div className="infoContent">
+              <div className="houseEmoji">🏠</div>
+
+              <h3 className="title">{predicted.building_name}</h3>
+              <p className="subtle">{predicted.location}</p>
+
+              <div className="priceCard">
+                <div className="priceType">{predicted.predicted_price_or_rent.type}</div>
+                <div className="priceAmount">
+                  {predicted.predicted_price_or_rent.currency} ${predicted.predicted_price_or_rent.amount}
+                </div>
+                <div className="confidence">
+                  Confidence: {predicted.predicted_price_or_rent.confidence}
+                </div>
+              </div>
+
+              <p className="notes">{predicted.predicted_price_or_rent.notes}</p>
+
+              <h3 className="sectionTitle">📈 Price Projection</h3>
+              <div className="sectionBlock">
+                <div className="row"><strong>1 Year:</strong> ${predicted.future_price_projection["1_year"]}</div>
+                <div className="row"><strong>5 Years:</strong> ${predicted.future_price_projection["5_year"]}</div>
+                <div className="row">
+                  <strong>Trend:</strong> {predicted.future_price_projection.trend} (
+                  {predicted.future_price_projection.confidence})
+                </div>
+              </div>
+
+              <p className="italicNote">{predicted.future_price_projection.notes}</p>
+
+              <h3 className="sectionTitle">🛒 Nearby Grocery</h3>
+              <ul className="list">
+                {predicted.nearby_food_grocery.map((store, i) => (
+                  <li key={i} className="listItem">{store}</li>
+                ))}
+              </ul>
+
+              <h3 className="sectionTitle">🏫 Nearby Schools</h3>
+              <ul className="list">
+                {predicted.nearby_schools.map((school, i) => (
+                  <li key={i} className="listItem">{school}</li>
+                ))}
+              </ul>
+
+              <div className="footerHint">
+                Swipe down to return to camera
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ℹ️ Info HUD */}
+        <div className="hud">
+          <div>📍 Lat: {coords.latitude ?? "---"}</div>
+          <div>📍 Lng: {coords.longitude ?? "---"}</div>
+          <div>🧭 Heading: {heading !== null ? `${heading}°` : "---"}</div>
+          <div>📐 Alpha: {orientation.alpha ?? "---"}°</div>
+          <div>📐 Beta: {orientation.beta ?? "---"}°</div>
+          <div>📐 Gamma: {orientation.gamma ?? "---"}°</div>
+        </div>
+
+        {/* 🛡 Motion Permission */}
+        {!orientationEnabled && (
+          <button onClick={enableOrientation} className="enableOrientationBtn">
+            Enable Orientation
+          </button>
+        )}
+      </>
+    )}
+  </div>
+);
 };
 
 export default FullscreenCamera;
