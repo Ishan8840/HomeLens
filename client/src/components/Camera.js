@@ -4,6 +4,8 @@ import "./Camera.css"
 const FullscreenCamera = () => {
   const videoRef = useRef(null);
   const [isStarted, setIsStarted] = useState(false);
+  const [hasGpsFix, setHasGpsFix] = useState(false);
+  const [hasOrientationFix, setHasOrientationFix] = useState(false);
 
   const [coords, setCoords] = useState({
     latitude: null,
@@ -81,6 +83,8 @@ const FullscreenCamera = () => {
 
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
+        setHasGpsFix(true); // ✅ we now have GPS data at least once
+
         setCoords({
           latitude: position.coords.latitude.toFixed(6),
           longitude: position.coords.longitude.toFixed(6),
@@ -88,11 +92,9 @@ const FullscreenCamera = () => {
           timestamp: new Date(position.timestamp).toLocaleTimeString(),
         });
       },
-      (err) => console.error("Geolocation error:", err),
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
+      (err) => {
+        console.error("Geolocation error:", err);
+        setHasGpsFix(false);
       }
     );
 
@@ -121,6 +123,15 @@ const FullscreenCamera = () => {
         beta: event.beta?.toFixed(1) ?? null,
         gamma: event.gamma?.toFixed(1) ?? null,
       });
+
+      // ✅ once we get our first non-null reading, we know the sensor is live
+      if (
+        event.alpha != null &&
+        event.beta != null &&
+        event.gamma != null
+      ) {
+        setHasOrientationFix(true);
+      }
     };
 
     try {
@@ -178,8 +189,17 @@ const FullscreenCamera = () => {
     gamma: null,
   });
 
+  // ✅ circular difference for 0-360 angles (handles 359 -> 1 as 2 degrees)
+  const angleDiff360 = (a, b) => {
+    const diff = Math.abs(a - b);
+    return Math.min(diff, 360 - diff);
+  };
+
   useEffect(() => {
     if (!isStarted) return;
+    if (!hasGpsFix) return;
+    if (!orientationEnabled) return;
+    if (!hasOrientationFix) return;
 
     const intervalId = setInterval(() => {
       const { latitude, longitude } = coords;
@@ -196,22 +216,30 @@ const FullscreenCamera = () => {
         return;
       }
 
+      // ensure we're comparing numbers (since you used toFixed -> strings)
+      const lat = Number(latitude);
+      const lng = Number(longitude);
+      const a = Number(alpha);
+      const b = Number(beta);
+      const g = Number(gamma);
+
       const last = lastValuesRef.current;
 
       // first run setup
       if (last.latitude === null) {
-        lastValuesRef.current = { latitude, longitude, alpha, beta, gamma };
+        lastValuesRef.current = { latitude: lat, longitude: lng, alpha: a, beta: b, gamma: g };
         return;
       }
 
       const gpsMoved =
-        Math.abs(latitude - last.latitude) > GPS_THRESHOLD ||
-        Math.abs(longitude - last.longitude) > GPS_THRESHOLD;
+        Math.abs(lat - last.latitude) > GPS_THRESHOLD ||
+        Math.abs(lng - last.longitude) > GPS_THRESHOLD;
 
+      // ✅ only alpha needs wraparound; beta/gamma are -180..180-ish, so abs is fine
       const orientationMoved =
-        Math.abs(alpha - last.alpha) > ORIENTATION_THRESHOLD ||
-        Math.abs(beta - last.beta) > ORIENTATION_THRESHOLD ||
-        Math.abs(gamma - last.gamma) > ORIENTATION_THRESHOLD;
+        angleDiff360(a, last.alpha) > ORIENTATION_THRESHOLD ||
+        Math.abs(b - last.beta) > ORIENTATION_THRESHOLD ||
+        Math.abs(g - last.gamma) > ORIENTATION_THRESHOLD;
 
       if (gpsMoved || orientationMoved) {
         console.log("📍 Device moved");
@@ -222,132 +250,132 @@ const FullscreenCamera = () => {
       }
 
       // update last values
-      lastValuesRef.current = { latitude, longitude, alpha, beta, gamma };
+      lastValuesRef.current = { latitude: lat, longitude: lng, alpha: a, beta: b, gamma: g };
     }, CHECK_EVERY_MS);
 
     return () => clearInterval(intervalId);
-  }, [isStarted, coords, orientation]);
+  }, [isStarted, hasGpsFix, orientationEnabled, hasOrientationFix, coords, orientation]);
 
 
 
   return (
-  <div className="arRoot">
-    {/* Start AR Button */}
-    {!isStarted && (
-      <button onClick={() => setIsStarted(true)} className="startARBtn">
-        Start AR
-      </button>
-    )}
+    <div className="arRoot">
+      {/* Start AR Button */}
+      {!isStarted && (
+        <button onClick={() => setIsStarted(true)} className="startARBtn">
+          Start AR
+        </button>
+      )}
 
-    {/* All camera and UI elements - only show after start */}
-    {isStarted && (
-      <>
-        {/* 📷 Fullscreen Camera */}
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className="cameraVideo"
-        />
+      {/* All camera and UI elements - only show after start */}
+      {isStarted && (
+        <>
+          {/* 📷 Fullscreen Camera */}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="cameraVideo"
+          />
 
-        {/* 🔴 Red Dot Center */}
-        <div className="centerDot" />
+          {/* 🔴 Red Dot Center */}
+          <div className="centerDot" />
 
-        {/* 🏠 House Icon - Bottom Right */}
-        {isFacingNorth && (
-          <button
-            onClick={() => setShowInfo(true)}
-            className="houseBtn"
-          >
-            🏠
-          </button>
-        )}
-        <div className={still ? "showing" : "hidden"}>STILL!</div> {/*TESSTTTTTT!!!!!!!!!!!!!!!!!!!!!!!*/}
+          {/* 🏠 House Icon - Bottom Right */}
+          {isFacingNorth && (
+            <button
+              onClick={() => setShowInfo(true)}
+              className="houseBtn"
+            >
+              🏠
+            </button>
+          )}
+          <div className={still ? "showing" : "hidden"}>STILL!</div> {/*TESSTTTTTT!!!!!!!!!!!!!!!!!!!!!!!*/}
 
-        {/* 🪧 Property Info Panel - Slide Up */}
-        {showInfo && (
-          <div
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
-            className="infoPanel"
-          >
-            {/* Swipe indicator */}
-            <div className="swipeHeader">
-              <div className="swipeBar" />
+          {/* 🪧 Property Info Panel - Slide Up */}
+          {showInfo && (
+            <div
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+              className="infoPanel"
+            >
+              {/* Swipe indicator */}
+              <div className="swipeHeader">
+                <div className="swipeBar" />
+              </div>
+
+              <div className="infoContent">
+                <div className="houseEmoji">🏠</div>
+
+                <h3 className="title">{predicted.building_name}</h3>
+                <p className="subtle">{predicted.location}</p>
+
+                <div className="priceCard">
+                  <div className="priceType">{predicted.predicted_price_or_rent.type}</div>
+                  <div className="priceAmount">
+                    {predicted.predicted_price_or_rent.currency} ${predicted.predicted_price_or_rent.amount}
+                  </div>
+                  <div className="confidence">
+                    Confidence: {predicted.predicted_price_or_rent.confidence}
+                  </div>
+                </div>
+
+                <p className="notes">{predicted.predicted_price_or_rent.notes}</p>
+
+                <h3 className="sectionTitle">📈 Price Projection</h3>
+                <div className="sectionBlock">
+                  <div className="row"><strong>1 Year:</strong> ${predicted.future_price_projection["1_year"]}</div>
+                  <div className="row"><strong>5 Years:</strong> ${predicted.future_price_projection["5_year"]}</div>
+                  <div className="row">
+                    <strong>Trend:</strong> {predicted.future_price_projection.trend} (
+                    {predicted.future_price_projection.confidence})
+                  </div>
+                </div>
+
+                <p className="italicNote">{predicted.future_price_projection.notes}</p>
+
+                <h3 className="sectionTitle">🛒 Nearby Grocery</h3>
+                <ul className="list">
+                  {predicted.nearby_food_grocery.map((store, i) => (
+                    <li key={i} className="listItem">{store}</li>
+                  ))}
+                </ul>
+
+                <h3 className="sectionTitle">🏫 Nearby Schools</h3>
+                <ul className="list">
+                  {predicted.nearby_schools.map((school, i) => (
+                    <li key={i} className="listItem">{school}</li>
+                  ))}
+                </ul>
+
+                <div className="footerHint">
+                  Swipe down to return to camera
+                </div>
+              </div>
             </div>
+          )}
 
-            <div className="infoContent">
-              <div className="houseEmoji">🏠</div>
-
-              <h3 className="title">{predicted.building_name}</h3>
-              <p className="subtle">{predicted.location}</p>
-
-              <div className="priceCard">
-                <div className="priceType">{predicted.predicted_price_or_rent.type}</div>
-                <div className="priceAmount">
-                  {predicted.predicted_price_or_rent.currency} ${predicted.predicted_price_or_rent.amount}
-                </div>
-                <div className="confidence">
-                  Confidence: {predicted.predicted_price_or_rent.confidence}
-                </div>
-              </div>
-
-              <p className="notes">{predicted.predicted_price_or_rent.notes}</p>
-
-              <h3 className="sectionTitle">📈 Price Projection</h3>
-              <div className="sectionBlock">
-                <div className="row"><strong>1 Year:</strong> ${predicted.future_price_projection["1_year"]}</div>
-                <div className="row"><strong>5 Years:</strong> ${predicted.future_price_projection["5_year"]}</div>
-                <div className="row">
-                  <strong>Trend:</strong> {predicted.future_price_projection.trend} (
-                  {predicted.future_price_projection.confidence})
-                </div>
-              </div>
-
-              <p className="italicNote">{predicted.future_price_projection.notes}</p>
-
-              <h3 className="sectionTitle">🛒 Nearby Grocery</h3>
-              <ul className="list">
-                {predicted.nearby_food_grocery.map((store, i) => (
-                  <li key={i} className="listItem">{store}</li>
-                ))}
-              </ul>
-
-              <h3 className="sectionTitle">🏫 Nearby Schools</h3>
-              <ul className="list">
-                {predicted.nearby_schools.map((school, i) => (
-                  <li key={i} className="listItem">{school}</li>
-                ))}
-              </ul>
-
-              <div className="footerHint">
-                Swipe down to return to camera
-              </div>
-            </div>
+          {/* ℹ️ Info HUD */}
+          <div className="hud">
+            <div>📍 Lat: {coords.latitude ?? "---"}</div>
+            <div>📍 Lng: {coords.longitude ?? "---"}</div>
+            <div>🧭 Heading: {heading !== null ? `${heading}°` : "---"}</div>
+            <div>📐 Alpha: {orientation.alpha ?? "---"}°</div>
+            <div>📐 Beta: {orientation.beta ?? "---"}°</div>
+            <div>📐 Gamma: {orientation.gamma ?? "---"}°</div>
           </div>
-        )}
 
-        {/* ℹ️ Info HUD */}
-        <div className="hud">
-          <div>📍 Lat: {coords.latitude ?? "---"}</div>
-          <div>📍 Lng: {coords.longitude ?? "---"}</div>
-          <div>🧭 Heading: {heading !== null ? `${heading}°` : "---"}</div>
-          <div>📐 Alpha: {orientation.alpha ?? "---"}°</div>
-          <div>📐 Beta: {orientation.beta ?? "---"}°</div>
-          <div>📐 Gamma: {orientation.gamma ?? "---"}°</div>
-        </div>
-
-        {/* 🛡 Motion Permission */}
-        {!orientationEnabled && (
-          <button onClick={enableOrientation} className="enableOrientationBtn">
-            Enable Orientation
-          </button>
-        )}
-      </>
-    )}
-  </div>
-);
+          {/* 🛡 Motion Permission */}
+          {!orientationEnabled && (
+            <button onClick={enableOrientation} className="enableOrientationBtn">
+              Enable Orientation
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
 };
 
 export default FullscreenCamera;
