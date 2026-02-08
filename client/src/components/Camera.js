@@ -174,26 +174,38 @@ const FullscreenCamera = () => {
   //********************************************************************** */
   const [still, setStill] = useState(false);
 
-  const lastOrientationRef = useRef(null);   // last orientation sample
-  const stillSinceRef = useRef(null);        // when "stillness" started
+  const lastOrientationRef = useRef(null);   
+  const stillSinceRef = useRef(null);        
+
+  // 1️⃣ NEW: Create a Ref to hold the current orientation
+  // This allows the interval to read the latest value without restarting
+  const currentOrientationRef = useRef(orientation);
+
+  // 2️⃣ NEW: Keep the Ref in sync with your state
+  useEffect(() => {
+    currentOrientationRef.current = orientation;
+  }, [orientation]);
 
   const CHECK_EVERY_MS = 150;
   const STILL_REQUIRED_MS = 2000;
-  const ORIENTATION_THRESHOLD = 15; // degrees
+  const ORIENTATION_THRESHOLD = 15;
 
-  // ✅ circular difference for 0-360 angles (handles 359 -> 1 as 2 degrees)
   const angleDiff360 = (a, b) => {
     const diff = Math.abs(a - b);
     return Math.min(diff, 360 - diff);
   };
 
+  // 3️⃣ UPDATED: The Stillness Logic
   useEffect(() => {
     if (!isStarted) return;
     if (!hasOrientationFix) return;
     if (!hasGpsFix) return;
 
     const intervalId = setInterval(() => {
-      const { alpha, beta, gamma } = orientation;
+      // 4️⃣ IMPORTANT: Read from the REF, not the state variable!
+      // This ensures we get fresh data even though 'orientation' isn't in the dependency array
+      const current = currentOrientationRef.current;
+      const { alpha, beta, gamma } = current;
 
       if (alpha == null || beta == null || gamma == null) {
         lastOrientationRef.current = null;
@@ -202,7 +214,6 @@ const FullscreenCamera = () => {
         return;
       }
 
-      const current = { alpha, beta, gamma };
       const last = lastOrientationRef.current;
 
       if (last === null) {
@@ -220,25 +231,25 @@ const FullscreenCamera = () => {
       const now = Date.now();
 
       if (orientationMoved) {
-      // movement resets stillness
-      stillSinceRef.current = null;
-      setStill(false);
-    } else {
-      // orientation stable this tick
-      if (stillSinceRef.current === null) {
-        stillSinceRef.current = now; // start timer
+        stillSinceRef.current = null;
         setStill(false);
-      } else if (now - stillSinceRef.current >= STILL_REQUIRED_MS) {
-        setStill(true);
+      } else {
+        if (stillSinceRef.current === null) {
+          stillSinceRef.current = now; 
+          setStill(false);
+        } else if (now - stillSinceRef.current >= STILL_REQUIRED_MS) {
+          setStill(true);
+        }
       }
-    }
 
-    // update baseline
-    lastOrientationRef.current = current;
-  }, CHECK_EVERY_MS);
+      // update baseline
+      lastOrientationRef.current = current;
+    }, CHECK_EVERY_MS);
 
     return () => clearInterval(intervalId);
-  }, [isStarted, orientation, hasGpsFix, hasOrientationFix]);
+    
+    // 5️⃣ REMOVE 'orientation' from dependencies so the interval stays alive
+  }, [isStarted, hasGpsFix, hasOrientationFix]);
 
 
 

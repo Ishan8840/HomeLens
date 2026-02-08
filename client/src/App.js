@@ -1,7 +1,6 @@
 import React from 'react';
 import './App.css';
-// import Camera from './components/Camera';
-import Orientation from './components/Orientation';
+import Camera from './components/Camera';
 
 function App() {
   return (
