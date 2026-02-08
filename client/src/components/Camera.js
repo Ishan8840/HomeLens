@@ -81,8 +81,9 @@ const FullscreenCamera = () => {
     startCamera();
 
     return () => {
-      if (videoRef.current?.srcObject) {
-        const stream = videoRef.current.srcObject;
+      const video = videoRef.current; // Copy ref to local variable
+      if (video?.srcObject) {
+        const stream = video.srcObject;
         const tracks = stream.getTracks();
         tracks.forEach(track => track.stop());
       }
