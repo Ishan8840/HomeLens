@@ -173,12 +173,19 @@ const FullscreenCamera = () => {
 
   //********************************************************************** */
   const [still, setStill] = useState(false);
+  const [stillMs, setStillMs] = useState(0);
 
   const CHECK_EVERY_MS = 150;
 
   // thresholds for "no movement"
   const GPS_THRESHOLD = 0.00002; // ~2 meters in lat/lng
   const ORIENTATION_THRESHOLD = 15; // degrees
+
+  // require 2 seconds of stillness
+  const STILL_REQUIRED_MS = 2000;
+
+  // optional cooldown so it doesn't spam while you keep holding still
+  const COOLDOWN_MS = 2500;
 
   // store previous values
   const lastValuesRef = useRef({
@@ -189,10 +196,25 @@ const FullscreenCamera = () => {
     gamma: null,
   });
 
+  const stillSinceRef = useRef(null);
+  const lastTriggerRef = useRef(0);
+
   // ✅ circular difference for 0-360 angles (handles 359 -> 1 as 2 degrees)
   const angleDiff360 = (a, b) => {
     const diff = Math.abs(a - b);
     return Math.min(diff, 360 - diff);
+  };
+
+  const onStillFor2Seconds = () => {
+    console.log("✅ Still for 2 seconds. Trigger API call here.", {
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      heading,
+      alpha: orientation.alpha,
+      beta: orientation.beta,
+      gamma: orientation.gamma,
+      time: new Date().toISOString(),
+    });
   };
 
   useEffect(() => {
@@ -205,18 +227,13 @@ const FullscreenCamera = () => {
       const { latitude, longitude } = coords;
       const { alpha, beta, gamma } = orientation;
 
-      // wait until all values exist
-      if (
-        latitude === null ||
-        longitude === null ||
-        alpha === null ||
-        beta === null ||
-        gamma === null
-      ) {
-        return;
-      }
+      // reset baseline when tracking begins
+      lastValuesRef.current = { latitude: null, longitude: null, alpha: null, beta: null, gamma: null };
+      stillSinceRef.current = null;
+      setStill(false);
+      setStillMs(0);
 
-      // ensure we're comparing numbers (since you used toFixed -> strings)
+      // convert strings -> numbers (because toFixed returns strings)
       const lat = Number(latitude);
       const lng = Number(longitude);
       const a = Number(alpha);
@@ -228,6 +245,9 @@ const FullscreenCamera = () => {
       // first run setup
       if (last.latitude === null) {
         lastValuesRef.current = { latitude: lat, longitude: lng, alpha: a, beta: b, gamma: g };
+        stillSinceRef.current = null;
+        setStill(false);
+        setStillMs(0);
         return;
       }
 
@@ -235,26 +255,49 @@ const FullscreenCamera = () => {
         Math.abs(lat - last.latitude) > GPS_THRESHOLD ||
         Math.abs(lng - last.longitude) > GPS_THRESHOLD;
 
-      // ✅ only alpha needs wraparound; beta/gamma are -180..180-ish, so abs is fine
       const orientationMoved =
         angleDiff360(a, last.alpha) > ORIENTATION_THRESHOLD ||
         Math.abs(b - last.beta) > ORIENTATION_THRESHOLD ||
         Math.abs(g - last.gamma) > ORIENTATION_THRESHOLD;
 
-      if (gpsMoved || orientationMoved) {
-        console.log("📍 Device moved");
+      // update baseline for next tick
+      lastValuesRef.current = { latitude: lat, longitude: lng, alpha: a, beta: b, gamma: g };
+
+      const moved = gpsMoved || orientationMoved;
+      const now = Date.now();
+
+      if (moved) {
+        // reset stillness timer
+        stillSinceRef.current = null;
         setStill(false);
-      } else {
-        console.log("🧊 Device still");
-        setStill(true);
+        setStillMs(0);
+        return;
       }
 
-      // update last values
-      lastValuesRef.current = { latitude: lat, longitude: lng, alpha: a, beta: b, gamma: g };
+      // still this tick: start timer if needed
+      if (stillSinceRef.current === null) {
+        stillSinceRef.current = now;
+        setStill(false);
+        setStillMs(0);
+        return;
+      }
+
+      const duration = now - stillSinceRef.current;
+      setStillMs(duration);
+
+      const isStillFor2s = duration >= STILL_REQUIRED_MS;
+      setStill(isStillFor2s);
+
+      // trigger once per cooldown while still
+      const sinceLastTrigger = now - lastTriggerRef.current;
+      if (isStillFor2s && sinceLastTrigger >= COOLDOWN_MS) {
+        lastTriggerRef.current = now;
+        onStillFor2Seconds();
+      }
     }, CHECK_EVERY_MS);
 
     return () => clearInterval(intervalId);
-  }, [isStarted, hasGpsFix, orientationEnabled, hasOrientationFix, coords, orientation]);
+  }, [isStarted, hasGpsFix, orientationEnabled, hasOrientationFix, coords, orientation, heading]);
 
 
 
