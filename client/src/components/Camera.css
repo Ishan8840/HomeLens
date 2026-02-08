@@ -32,7 +32,7 @@
   height: 100vh;
   object-fit: cover;
   background-color: black;
-  z-index: 0;
+  z-index: 99999;
 }
 
 /* Center red dot */
@@ -46,7 +46,6 @@
   background-color: red;
   border-radius: 50%;
   z-index: 2;
-  pointer-events: none; /* ADD THIS - prevents blocking touches */
 }
 
 /* House button bottom-right */
@@ -229,23 +228,13 @@
   cursor: pointer;
 }
 
-/* FIXED: Test indicator for stillness detection */
-.showing {
-  position: fixed; /* ADD THIS */
-  top: 20px; /* ADD THIS */
-  left: 50%; /* ADD THIS */
-  transform: translateX(-50%); /* ADD THIS */
-  padding: 10px 20px; /* ADD THIS */
-  background: rgba(0, 255, 0, 0.8); /* ADD THIS */
-  color: white; /* ADD THIS */
-  font-weight: bold; /* ADD THIS */
-  border-radius: 8px; /* ADD THIS */
-  z-index: 10; /* ADD THIS */
-  pointer-events: none; /* ADD THIS - prevents blocking video */
+.showing{
+    width: 50px;
+    height: 50px;
 }
 
-.hidden {
-  display: none; /* CHANGED from opacity: 0 */
+.hidden{
+    opacity: 0;
 }
 
 /* Keyframes moved out of JSX */
