@@ -29,7 +29,6 @@ const FullscreenCamera = () => {
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState(null);
 
-  // prevents calling API every 150ms while still==true
   const didFetchForCurrentStillRef = useRef(false);
 
   const fetchPrediction = useCallback(async () => {
@@ -60,7 +59,6 @@ const FullscreenCamera = () => {
     }
   }, [coords.latitude, coords.longitude, heading]);
 
-  // 📸 Start rear camera
   const streamRef = useRef(null);
 
   useEffect(() => {
@@ -96,16 +94,13 @@ const FullscreenCamera = () => {
 
         video.srcObject = stream;
 
-        // iOS sometimes needs these explicitly
         video.setAttribute("playsinline", "true");
         video.muted = true;
 
-        // Start playback
         await video.play().catch((e) => {
           console.log("video.play() failed:", e);
         });
 
-        // Restart if track ends (common on iOS when something interrupts)
         const [track] = stream.getVideoTracks();
         if (track) {
           track.onended = () => {
@@ -114,8 +109,6 @@ const FullscreenCamera = () => {
           };
         }
 
-        // Optional debug:
-        // attachDebug(video, stream);
 
       } catch (e) {
         console.error("Camera error:", e);
@@ -123,7 +116,6 @@ const FullscreenCamera = () => {
     };
 
     const onVisibility = () => {
-      // When user switches tabs / permissions prompt / etc.
       if (document.visibilityState === "visible") {
         console.log("Tab visible → ensure camera playing");
         startStream();
@@ -141,17 +133,16 @@ const FullscreenCamera = () => {
   }, [isStarted]);
 
 
-  // 📍 Geolocation updates
   useEffect(() => {
     if (!isStarted || !navigator.geolocation) return;
 
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        setHasGpsFix(true); // ✅ we now have GPS data at least once
+        setHasGpsFix(true); 
 
         setCoords({
-          latitude: position.coords.latitude,   // ✅ keep as number
-          longitude: position.coords.longitude, // ✅ keep as number
+          latitude: position.coords.latitude,  
+          longitude: position.coords.longitude,
           accuracy: position.coords.accuracy,
           timestamp: position.timestamp,
         });
@@ -165,7 +156,6 @@ const FullscreenCamera = () => {
     return () => navigator.geolocation.clearWatch(watchId);
   }, [isStarted]);
 
-  // 🧭 Device orientation
   const enableOrientation = async () => {
     const handleOrientation = (event) => {
       let compassHeading = null;
@@ -183,12 +173,12 @@ const FullscreenCamera = () => {
       }
 
       setOrientation({
-        alpha: event.alpha ?? null, // ✅ keep as number
+        alpha: event.alpha ?? null,
         beta: event.beta ?? null,
         gamma: event.gamma ?? null,
       });
 
-      // ✅ once we get our first non-null reading, we know the sensor is live
+
       if (
         event.alpha != null &&
         event.beta != null &&
@@ -217,10 +207,6 @@ const FullscreenCamera = () => {
     }
   };
 
-  // 🏠 Show icon if heading is ~north (±10°)
-  // const isFacingNorth = heading !== null && (heading <= 10 || heading >= 350);
-
-  // Handle swipe down to close popup
   const handleTouchStart = (e) => {
     touchStartY.current = e.touches[0].clientY;
   };
@@ -229,7 +215,6 @@ const FullscreenCamera = () => {
     const touchEndY = e.changedTouches[0].clientY;
     const swipeDistance = touchEndY - touchStartY.current;
 
-    // If swiped down more than 100px, close popup
     if (swipeDistance > 100) {
       setShowInfo(false);
     }
@@ -240,12 +225,8 @@ const FullscreenCamera = () => {
 
   const lastOrientationRef = useRef(null);
   const stillSinceRef = useRef(null);
-
-  // 1️⃣ NEW: Create a Ref to hold the current orientation
-  // This allows the interval to read the latest value without restarting
   const currentOrientationRef = useRef(orientation);
 
-  // 2️⃣ NEW: Keep the Ref in sync with your state
   useEffect(() => {
     currentOrientationRef.current = orientation;
   }, [orientation]);
@@ -259,15 +240,12 @@ const FullscreenCamera = () => {
     return Math.min(diff, 360 - diff);
   };
 
-  // 3️⃣ UPDATED: The Stillness Logic
   useEffect(() => {
     if (!isStarted) return;
     if (!hasOrientationFix) return;
     if (!hasGpsFix) return;
 
     const intervalId = setInterval(() => {
-      // 4️⃣ IMPORTANT: Read from the REF, not the state variable!
-      // This ensures we get fresh data even though 'orientation' isn't in the dependency array
       const current = currentOrientationRef.current;
       const { alpha, beta, gamma } = current;
 
@@ -306,13 +284,11 @@ const FullscreenCamera = () => {
         }
       }
 
-      // update baseline
       lastOrientationRef.current = current;
     }, CHECK_EVERY_MS);
 
     return () => clearInterval(intervalId);
 
-    // 5️⃣ REMOVE 'orientation' from dependencies so the interval stays alive
   }, [isStarted, hasGpsFix, hasOrientationFix]);
 
   useEffect(() => {
@@ -335,9 +311,6 @@ const FullscreenCamera = () => {
 
   }, [still, hasGpsFix, hasOrientationFix, fetchPrediction, fetchError, isFetching, showInfo]);
 
-
-
-
   return (
     <div className="arRoot">
       {/* Start AR Button */}
@@ -347,10 +320,8 @@ const FullscreenCamera = () => {
         </button>
       )}
 
-      {/* All camera and UI elements - only show after start */}
       {isStarted && (
         <>
-          {/* 📷 Fullscreen Camera */}
           <video
             ref={videoRef}
             autoPlay
@@ -359,19 +330,14 @@ const FullscreenCamera = () => {
             className="cameraVideo"
           />
 
-          {/* 🔴 Red Dot Center */}
           <div className="centerDot">
             <span />
           </div>
 
-
-          {/* 🏠 House Icon - Bottom Right */}
           {still && (
             <button
               onClick={() => {
                 setShowInfo(true);
-                // optional: if you want tap to force refresh
-                // fetchPrediction();
               }}
               className="houseBtn"
             >
@@ -379,8 +345,6 @@ const FullscreenCamera = () => {
             </button>
           )}
 
-
-          {/*🪧 Property Info Panel - Slide Up */}
           {showInfo && (
             <div
               onTouchStart={handleTouchStart}
@@ -488,7 +452,6 @@ const FullscreenCamera = () => {
             </div>
           )}
 
-          {/* 🛡 Motion Permission */}
           {!orientationEnabled && (
             <button onClick={enableOrientation} className="enableOrientationBtn">
               Enable Orientation
