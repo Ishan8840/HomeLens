@@ -59,7 +59,7 @@ def generate_summary(location: dict):
         Rules:
         - At least 3 food places
         - At least 3 schools
-        - Walking distance from McMaster University
+        - Walking distance and time from McMaster University
         - At least 1 nearby bus stop.
         - Use estimates if unknown
 

@@ -64,82 +64,82 @@ const FullscreenCamera = () => {
   // 📸 Start rear camera
   const streamRef = useRef(null);
 
-useEffect(() => {
-  if (!isStarted) return;
+  useEffect(() => {
+    if (!isStarted) return;
 
-  let cancelled = false;
+    let cancelled = false;
 
-  const stopStream = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
-  };
+    const stopStream = () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+    };
 
-  const startStream = async () => {
-    try {
+    const startStream = async () => {
+      try {
+        stopStream();
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false,
+        });
+
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+
+        streamRef.current = stream;
+
+        const video = videoRef.current;
+        if (!video) return;
+
+        video.srcObject = stream;
+
+        // iOS sometimes needs these explicitly
+        video.setAttribute("playsinline", "true");
+        video.muted = true;
+
+        // Start playback
+        await video.play().catch((e) => {
+          console.log("video.play() failed:", e);
+        });
+
+        // Restart if track ends (common on iOS when something interrupts)
+        const [track] = stream.getVideoTracks();
+        if (track) {
+          track.onended = () => {
+            console.log("TRACK ended → restarting camera");
+            startStream();
+          };
+        }
+
+        // Optional debug:
+        // attachDebug(video, stream);
+
+      } catch (e) {
+        console.error("Camera error:", e);
+      }
+    };
+
+    const onVisibility = () => {
+      // When user switches tabs / permissions prompt / etc.
+      if (document.visibilityState === "visible") {
+        console.log("Tab visible → ensure camera playing");
+        startStream();
+      }
+    };
+
+    startStream();
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisibility);
       stopStream();
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
-        audio: false,
-      });
-
-      if (cancelled) {
-        stream.getTracks().forEach((t) => t.stop());
-        return;
-      }
-
-      streamRef.current = stream;
-
-      const video = videoRef.current;
-      if (!video) return;
-
-      video.srcObject = stream;
-
-      // iOS sometimes needs these explicitly
-      video.setAttribute("playsinline", "true");
-      video.muted = true;
-
-      // Start playback
-      await video.play().catch((e) => {
-        console.log("video.play() failed:", e);
-      });
-
-      // Restart if track ends (common on iOS when something interrupts)
-      const [track] = stream.getVideoTracks();
-      if (track) {
-        track.onended = () => {
-          console.log("TRACK ended → restarting camera");
-          startStream();
-        };
-      }
-
-      // Optional debug:
-      // attachDebug(video, stream);
-
-    } catch (e) {
-      console.error("Camera error:", e);
-    }
-  };
-
-  const onVisibility = () => {
-    // When user switches tabs / permissions prompt / etc.
-    if (document.visibilityState === "visible") {
-      console.log("Tab visible → ensure camera playing");
-      startStream();
-    }
-  };
-
-  startStream();
-  document.addEventListener("visibilitychange", onVisibility);
-
-  return () => {
-    cancelled = true;
-    document.removeEventListener("visibilitychange", onVisibility);
-    stopStream();
-  };
-}, [isStarted]);
+    };
+  }, [isStarted]);
 
 
   // 📍 Geolocation updates
@@ -380,7 +380,7 @@ useEffect(() => {
               🏠
             </button>
           )}
-        
+
 
           {/*🪧 Property Info Panel - Slide Up */}
           {showInfo && (
@@ -447,6 +447,46 @@ useEffect(() => {
                         <li key={i} className="listItem">{place.name}</li>
                       ))}
                     </ul>
+                    <h3 className="sectionTitle">🚶 Distance to McMaster</h3>
+                    <div className="sectionBlock">
+                      <div className="row">
+                        <strong>Distance:</strong>{" "}
+                        {predicted.distance?.distance_km ? `${predicted.distance.distance_km} km` : "N/A"}
+                      </div>
+                      <div className="row">
+                        <strong>Time:</strong>{" "}
+                        {predicted.distance?.estimated_time_minutes
+                          ? `${predicted.distance.estimated_time_minutes} min walk`
+                          : "N/A"}
+                      </div>
+                      <div className="row">
+                        <strong>Confidence:</strong> {predicted.distance?.confidence || "N/A"}
+                      </div>
+                    </div>
+                    {predicted.distance?.notes && <p className="italicNote">{predicted.distance.notes}</p>}
+
+                    <h3 className="sectionTitle">🚌 Nearby Bus Stop</h3>
+                    <div className="sectionBlock">
+                      <div className="row">
+                        <strong>Stop:</strong> {predicted.nearby_bus_stop?.name || "N/A"}
+                      </div>
+                      <div className="row">
+                        <strong>Distance:</strong>{" "}
+                        {predicted.nearby_bus_stop?.distance_m
+                          ? `${predicted.nearby_bus_stop.distance_m} m`
+                          : "N/A"}
+                      </div>
+                      <div className="row">
+                        <strong>Routes:</strong>{" "}
+                        {(predicted.nearby_bus_stop?.routes || []).length
+                          ? predicted.nearby_bus_stop.routes.join(", ")
+                          : "N/A"}
+                      </div>
+                      <div className="row">
+                        <strong>Confidence:</strong> {predicted.nearby_bus_stop?.confidence || "N/A"}
+                      </div>
+                    </div>
+                    {predicted.nearby_bus_stop?.notes && <p className="italicNote">{predicted.nearby_bus_stop.notes}</p>}
 
                     <h3 className="sectionTitle">🏫 Nearby Schools</h3>
                     <ul className="list">
