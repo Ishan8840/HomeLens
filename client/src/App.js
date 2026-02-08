@@ -6,7 +6,7 @@ function App() {
   return (
     <div className="App">
       <h1>React Camera App</h1>
-      <Orientation />
+      <Camera />
     </div>
   );
 }
