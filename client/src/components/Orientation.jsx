@@ -96,7 +96,13 @@ const Orientation = () => {
   };
 
   // cleanup on unmount
-  useEffect(() => stopOrientation, []);
+  useEffect(() => {
+    return () => {
+        window.removeEventListener("deviceorientationabsolute", handleOrientation, true);
+        window.removeEventListener("deviceorientation", handleOrientation, true);
+    };
+    }, []);
+
 
   // 🔐 Enable orientation (needed for iOS)
   const enableOrientation = async () => {
