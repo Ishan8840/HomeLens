@@ -31,3 +31,22 @@ Next, we want to improve accuracy by incorporating better sensor filtering and a
 
 ## Devpost
 https://devpost.com/software/homelytics?ref_content=my-projects-tab&ref_feature=my_projects
+
+
+## Built With
+data
+fastapi
+geminiapi
+javascript
+nominatim
+postgis
+postgresql
+python
+react
+render
+sql
+supabase
+vercel
+
+## Try it out
+[macathon-beta.vercel.app](https://macathon-beta.vercel.app/)
